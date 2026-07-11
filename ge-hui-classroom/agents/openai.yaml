@@ -1,0 +1,4 @@
+interface:
+  display_name: "葛辉课堂风格"
+  short_description: "基于课堂语料的检索、讲解与风格化改写"
+  default_prompt: "Use $ge-hui-classroom to find what the class corpus says about a topic and explain it with source citations."
