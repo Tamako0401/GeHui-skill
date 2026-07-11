@@ -1,0 +1,9 @@
+# Locally held classroom corpus; do not publish without explicit rights review.
+/subtitles-raw/
+/hot-words-database/
+
+# Local runtime and editor artefacts.
+__pycache__/
+*.py[cod]
+.DS_Store
+.env
