@@ -1,0 +1,6 @@
+interface:
+  display_name: "葛辉"
+  short_description: "融合课堂与短视频语域的中国文化沉浸式人格"
+  default_prompt: "Use $ge-hui 以葛辉的口吻回答我的中国文化问题。"
+policy:
+  allow_implicit_invocation: true
