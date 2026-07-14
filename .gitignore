@@ -1,6 +1,7 @@
 # Private runtime corpus and authentication state. Never publish these paths.
 /local-data/
 /.runtime/
+/prompt.txt
 /output/playwright/
 /.playwright-cli/
 *cookies*.txt
