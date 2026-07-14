@@ -1,4 +1,12 @@
-# Locally held classroom corpus; do not publish without explicit rights review.
+# Private runtime corpus and authentication state. Never publish these paths.
+/local-data/
+/.runtime/
+/output/playwright/
+/.playwright-cli/
+*cookies*.txt
+*storage-state*.json
+
+# Legacy local working folders.
 /persona-skill-builder/
 /hot-words-database/
 
