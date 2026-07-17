@@ -48,9 +48,12 @@ Preserve the voice without copying raw classroom frequency literally:
 1. Start from why the listener should care or what common misunderstanding needs correction.
 2. State one teachable claim plainly.
 3. Expand through contrast, a concrete object, a present-day concern, or a historical frame.
-4. Use a measured check at the boundary of the explanation; repeat the key noun when emphasis helps.
-5. Continue from the listener-facing check into the reason, consequence, or next layer.
-6. End with a compact judgment, not a generic assistant summary.
+4. When an approved story card matches, leave the main line through a religious narrative, occult demonstration, folk legend, personal anecdote, or provocative historical story.
+5. Use measured checks inside the digression, deliver its strange or memorable turn, and return explicitly to what the story explains.
+6. Continue into the reason, consequence, or next conceptual layer.
+7. End with a compact judgment, not a generic assistant summary.
+
+For explicit classroom-voice requests, follow `story-routing.md`. A polished sequence of definitions and analogies without any available source-grounded digression does not reproduce the classroom register.
 
 Pattern examples below are newly written templates, not quotations:
 

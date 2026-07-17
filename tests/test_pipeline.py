@@ -30,6 +30,9 @@ corpus_status = load_module("corpus_status")
 distill_style = load_module("distill_style")
 distill_classroom = load_module("distill_classroom_style")
 export_reviewed = load_module("export_reviewed_transcripts")
+prepare_stories = load_module("prepare_classroom_stories")
+promote_stories = load_module("promote_classroom_stories")
+persona_eval = load_module("evaluate_persona_response")
 
 
 class PipelineTests(unittest.TestCase):
@@ -356,6 +359,144 @@ class PipelineTests(unittest.TestCase):
                 "noise_asr_loop",
                 exported["omitted_segments"][0]["correction_kind"],
             )
+
+    def test_classroom_story_extraction_balances_categories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            classroom = root / "subtitles-raw"
+            classroom.mkdir()
+            (classroom / "sample.srt").write_text(
+                "1\n00:00:00,000 --> 00:00:20,000\n我给你们讲一个佛陀的故事\n\n"
+                "2\n00:00:20,000 --> 00:00:40,000\n后来地藏菩萨发愿救度地狱众生\n\n"
+                "3\n00:05:00,000 --> 00:05:20,000\n想不想听东北出马仙的故事\n\n"
+                "4\n00:05:20,000 --> 00:05:40,000\n狐黄白这些动物仙后来怎么了\n",
+                encoding="utf-8",
+            )
+            candidates = prepare_stories.extract_candidates(
+                root,
+                per_category=2,
+                before_seconds=0,
+                after_seconds=60,
+            )
+            self.assertEqual(
+                {"buddhism", "folk_supernatural"},
+                {row["category"] for row in candidates},
+            )
+
+    def test_classroom_story_queue_never_overwrites_human_edits(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            candidate = {
+                "category": "buddhism",
+                "source_file": "sample.srt",
+                "seed_start": 10.0,
+                "suggested_start": 0.0,
+                "suggested_end": 60.0,
+                "score": 20,
+                "category_score": 15,
+                "anchor_score": 5,
+                "matched_terms": {"佛陀": 1},
+                "matched_anchors": {"故事": 1},
+                "source_segments": [
+                    {
+                        "start_timestamp": "00:00:00,000",
+                        "end_timestamp": "00:00:20,000",
+                        "text": "佛陀的故事",
+                    }
+                ],
+            }
+            paths = prepare_stories.write_review_queue([candidate], root)
+            review = json.loads(paths[0].read_text(encoding="utf-8"))
+            review["title"] = "人工标题"
+            paths[0].write_text(json.dumps(review, ensure_ascii=False), encoding="utf-8")
+            prepare_stories.write_review_queue([candidate], root)
+            preserved = json.loads(paths[0].read_text(encoding="utf-8"))
+            self.assertEqual("人工标题", preserved["title"])
+
+    def test_classroom_story_human_gate_checks_approved_boundaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            classroom = root / "subtitles-raw"
+            review_root = root / "local" / "story-reviews" / "buddhism"
+            classroom.mkdir()
+            review_root.mkdir(parents=True)
+            (classroom / "sample.srt").write_text(
+                "1\n00:00:00,000 --> 00:00:20,000\n佛陀的故事\n",
+                encoding="utf-8",
+            )
+            review = {
+                "story_id": "CLS-BUD-TEST",
+                "review_status": "approved",
+                "title": "人工标题",
+                "source_file": "sample.srt",
+                "start": "00:00:00,000",
+                "end": "00:00:20,000",
+            }
+            (review_root / "story.json").write_text(
+                json.dumps(review, ensure_ascii=False), encoding="utf-8"
+            )
+            report = prepare_stories.review_status_report(root / "local", root)
+            self.assertTrue(report["human_gate_ready"])
+            self.assertEqual({"approved": 1}, report["status"])
+
+    def test_story_promotion_requires_spine_and_emits_index(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            classroom = root / "subtitles-raw"
+            reviews = root / "reviews" / "buddhism"
+            output = root / "public"
+            classroom.mkdir()
+            reviews.mkdir(parents=True)
+            (classroom / "sample.srt").write_text(
+                "1\n00:00:00,000 --> 00:00:20,000\n佛陀当时讲了一个故事\n",
+                encoding="utf-8",
+            )
+            payload = {
+                "story_id": "CLS-BUD-TEST",
+                "review_status": "approved",
+                "category": "buddhism",
+                "title": "佛陀说法",
+                "source_file": "sample.srt",
+                "start": "00:00:00,000",
+                "end": "00:00:20,000",
+                "trigger_topics": ["佛家", "佛陀"],
+                "story_type": "religious_narrative",
+                "truth_status": "religious_narrative",
+                "narrative_spine": "佛陀以一段说法引出修行问题。",
+                "return_point": "回到佛家如何理解苦。",
+            }
+            (reviews / "story.json").write_text(
+                json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+            )
+            paths = promote_stories.promote(root / "reviews", root, output)
+            self.assertTrue((output / "story-index.tsv").exists())
+            self.assertTrue((output / "stories-buddhism.md").exists())
+            self.assertIn("CLS-BUD-TEST", (output / "story-index.tsv").read_text(encoding="utf-8"))
+            self.assertEqual(2, len(paths))
+
+    def test_introduce_buddhism_regression_rejects_definition_only_answer(self):
+        case = persona_eval.load_case(
+            ROOT / "tests" / "persona_cases.json",
+            "introduce-buddhism-classroom",
+        )
+        definition_only = (
+            "佛家主要讨论苦、缘起和无常。还明白啊？它分析人的执念，"
+            "再说明人为什么会烦恼，对不对？所以佛家是一套认识内心的方法。" * 4
+        )
+        self.assertFalse(persona_eval.evaluate_response(definition_only, case)["passed"])
+
+        story_answer = (
+            "佛家先讲苦和缘起，这个根要先立住，还明白啊？" * 4
+            + "\n\n佛教故事里有一个佛陀初次说法的场景，当时他先向身边的人讲苦。"
+            "当时人们面对疾病、衰老和死亡，并没有今天这么多解释工具，"
+            "所以这个宗教叙事先把所有人都逃不开的经验摆出来，再问人为什么执着。"
+            "这个故事说明，佛家不是先求保佑，而是先正视苦。"
+            + "\n\n我跟你讲，课堂里有个玄一点的说法，后来又会从地藏菩萨讲到地狱救度。"
+            "按这个说法，地藏发愿不是为了展示神通，而是把救度众生讲成一件不能半途而废的事。"
+            "这类故事可以讲得很玄，但不能直接拿来替代史料。讲完以后，我们再回到佛家的因果和无常，"
+            "绕了一圈还是这个道理：它要处理的是人怎样面对变化、执念和失去。知道吧？"
+        )
+        self.assertTrue(persona_eval.evaluate_response(story_answer, case)["passed"])
 
 
 if __name__ == "__main__":

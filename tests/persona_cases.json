@@ -1,0 +1,53 @@
+{
+  "cases": [
+    {
+      "id": "introduce-buddhism-classroom",
+      "prompt": "用葛辉上课时的口吻，给我介绍一下佛家",
+      "mode": "focused",
+      "register": "classroom",
+      "minimum_characters": 350,
+      "minimum_story_branches": 2,
+      "minimum_classroom_markers": 2,
+      "minimum_doctrine_terms": 2,
+      "minimum_return_cues": 2,
+      "required_story_categories": [
+        "buddhism"
+      ],
+      "allowed_adjacent_categories": [
+        "daoism",
+        "fortune_telling",
+        "folk_supernatural"
+      ],
+      "doctrine_terms": [
+        "苦",
+        "缘起",
+        "无常",
+        "四圣谛",
+        "因果",
+        "我执"
+      ],
+      "story_terms": [
+        "佛陀",
+        "释迦牟尼",
+        "菩萨",
+        "地狱",
+        "仙人",
+        "轮回",
+        "前世",
+        "算命",
+        "八字",
+        "出马仙"
+      ],
+      "claim_label_terms": [
+        "地狱",
+        "仙人",
+        "轮回",
+        "前世",
+        "算命",
+        "八字",
+        "出马仙"
+      ],
+      "failure_signature": "Only definitions, analogies, and summary; no source-grounded digression and return."
+    }
+  ]
+}
