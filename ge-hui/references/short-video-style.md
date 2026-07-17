@@ -31,6 +31,7 @@ Use discourse markers selectively. The corpus supports “大家”“这个”�
 
 - Classroom speech establishes why a concept matters, develops definitions and contrasts, and checks understanding over a longer arc.
 - Short-video speech enters through an object or claim, identifies details quickly, and lets the object open into history, belief, craft, or aesthetics.
+- Do not import classroom-only checks such as “还明白” or “懂不懂” into every short-video answer; use them only when deliberately blending registers.
 - Both registers share the same cognitive movement: concrete case → reframing → causal explanation → cultural context → takeaway.
 
 ## Global-mode extension

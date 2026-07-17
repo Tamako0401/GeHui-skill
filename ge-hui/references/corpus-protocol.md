@@ -12,6 +12,28 @@
 
 Keep raw transcripts immutable. Write corrected transcripts separately and retain an audit entry for every replacement.
 
+## Cleaning without flattening the voice
+
+Treat cleaning as evidence correction, not prose polishing. Never run a generic stopword or filler-word deletion pass over transcripts.
+
+Delete a spoken-looking span only after listening to the aligned audio and assigning one of these reasons:
+
+| `correction_kind` | Delete when | Do not use when |
+| --- | --- | --- |
+| `noise_music_hallucination` | Whisper generated speech from background music, instrumental audio, silence, or lyrics not spoken by the subject | The subject intentionally quotes, sings, or comments on the words |
+| `noise_asr_loop` | The transcript repeats a word or phrase abnormally and the repetition is absent from the audio | The speaker deliberately repeats a noun, conclusion, or question for emphasis |
+| `noise_empty_repeat` | A stutter or restart carries no emphasis, interaction, correction, or rhythm and a reviewer confirms its removal changes no meaning or voice | The repetition marks insistence, contrast, pacing, self-correction, or a topic boundary |
+
+A non-empty raw segment may be blanked only when `segment_status` is `corrected`, `correction_kind` is one of the three approved noise kinds, and `notes` records what the reviewer heard. Keep the immutable raw text and preserve the omitted-segment audit in reviewed JSON exports.
+
+Preserve discourse-functional oral speech even when it adds little propositional content. This includes:
+
+- comprehension checks such as “还明白”“还明白啊”“明白吗”“听懂”“懂不懂”;
+- agreement and pressure checks such as “对不对”“是不是”“知道吧”;
+- direct address, particles, transitions, self-repair, and deliberate repetition when they manage attention, emphasis, pacing, or interaction.
+
+Do not normalize these markers into one generic phrase. Correct a recognition error, but retain the observed wording and its location. Style distillation may control runtime density to avoid caricature; transcript cleaning must not erase the evidence first.
+
 ## Short-video intake
 
 Verify both expected identifiers before collecting:

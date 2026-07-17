@@ -9,6 +9,15 @@ from pathlib import Path
 from typing import Any
 
 
+REMOVABLE_NOISE_KINDS = frozenset(
+    {
+        "noise_music_hallucination",
+        "noise_asr_loop",
+        "noise_empty_repeat",
+    }
+)
+
+
 def count_jsonl(path: Path) -> int:
     if not path.exists():
         return 0
@@ -36,6 +45,8 @@ def review_validation_errors(review: dict[str, Any]) -> list[str]:
         status = segment.get("segment_status")
         raw = str(segment.get("raw_text") or "")
         corrected = str(segment.get("corrected_text") or "")
+        correction_kind = str(segment.get("correction_kind") or "none")
+        notes = str(segment.get("notes") or "").strip()
         if status not in {"verified", "corrected"}:
             errors.append(f"segment-{index}-invalid-status")
         elif status == "verified" and corrected != raw:
@@ -43,7 +54,10 @@ def review_validation_errors(review: dict[str, Any]) -> list[str]:
         elif status == "corrected" and corrected == raw:
             errors.append(f"segment-{index}-corrected-text-unchanged")
         if raw.strip() and not corrected.strip():
-            errors.append(f"segment-{index}-blank-correction")
+            if correction_kind not in REMOVABLE_NOISE_KINDS:
+                errors.append(f"segment-{index}-blank-without-approved-noise-kind")
+            if not notes:
+                errors.append(f"segment-{index}-blank-without-review-note")
     return errors
 
 

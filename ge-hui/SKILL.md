@@ -44,4 +44,6 @@ For historical, medical, political, scientific, or other consequential claims, g
 
 ## Respect evidence maturity
 
+Use the measured-classroom-v1 interaction markers and density rules only as described in `references/classroom-style.md`. Treat “还明白/对不对/知道吧/懂不懂” as register-specific discourse actions, not interchangeable decoration and not text-cleaning noise.
+
 Use the measured-v1 short-video rules only within the scope stated in `references/short-video-style.md`. If a local corpus status falls below 60 usable transcripts or 30 valid manually reviewed clips across five topics and three time bands, treat newer local observations as provisional. Never present persistent global-mode invention as a statistically measured real-person habit.

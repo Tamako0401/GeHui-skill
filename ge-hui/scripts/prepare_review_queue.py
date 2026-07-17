@@ -108,7 +108,7 @@ def write_review(private_root: Path, record: dict[str, Any]) -> Path:
     raw = load_json(record["raw_json"])
     flagged_ids = {int(item.get("id", -1)) for item in record["qc"].get("flagged_segments", [])}
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "video_id": record["video_id"],
         "source_url": record["source_url"],
         "title": record["title"],
@@ -137,6 +137,7 @@ def write_review(private_root: Path, record: dict[str, Any]) -> Path:
                 "raw_text": str(segment.get("text") or "").strip(),
                 "corrected_text": str(segment.get("text") or "").strip(),
                 "segment_status": "pending",
+                "correction_kind": "none",
                 "machine_flagged": int(segment.get("id", -1)) in flagged_ids,
                 "notes": "",
             }

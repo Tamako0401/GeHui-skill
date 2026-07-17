@@ -28,6 +28,7 @@ transcribe = load_module("transcribe_whisper")
 review_queue = load_module("prepare_review_queue")
 corpus_status = load_module("corpus_status")
 distill_style = load_module("distill_style")
+distill_classroom = load_module("distill_classroom_style")
 export_reviewed = load_module("export_reviewed_transcripts")
 
 
@@ -228,6 +229,37 @@ class PipelineTests(unittest.TestCase):
         }
         self.assertEqual([], corpus_status.review_validation_errors(review))
 
+    def test_review_gate_allows_only_evidenced_noise_deletion(self):
+        accepted = {
+            "reviewer": "owner",
+            "reviewed_on": "2026-07-17",
+            "segments": [
+                {
+                    "raw_text": "字幕志愿者反复循环",
+                    "corrected_text": "",
+                    "segment_status": "corrected",
+                    "correction_kind": "noise_asr_loop",
+                    "notes": "复听音频后确认该段无人声",
+                }
+            ],
+        }
+        self.assertEqual([], corpus_status.review_validation_errors(accepted))
+
+        flattened_voice = {
+            **accepted,
+            "segments": [
+                {
+                    "raw_text": "还明白啊",
+                    "corrected_text": "",
+                    "segment_status": "corrected",
+                    "correction_kind": "filler",
+                    "notes": "认为是口头语",
+                }
+            ],
+        }
+        errors = corpus_status.review_validation_errors(flattened_voice)
+        self.assertIn("segment-0-blank-without-approved-noise-kind", errors)
+
     def test_style_phrase_statistics_count_clips_separately(self):
         reviews = [
             {"video_id": "1", "_text": "大家大家为什么"},
@@ -238,8 +270,92 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(3, everyone["count"])
         self.assertEqual(2, everyone["clips"])
 
+    def test_classroom_style_models_frequency_function_and_position(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            classroom = root / "subtitles-raw"
+            classroom.mkdir()
+            (classroom / "sample.srt").write_text(
+                "1\n00:00:00,000 --> 00:00:02,000\n这个问题，还明白啊，所以继续\n\n"
+                "2\n00:00:02,000 --> 00:00:03,000\n对不对\n\n"
+                "3\n00:00:03,000 --> 00:00:04,000\n你到底懂不懂\n",
+                encoding="utf-8",
+            )
+            report = distill_classroom.build_report(root)
+            self.assertEqual("measured-classroom-v1", report["profile"])
+            self.assertEqual(1, report["phrases"]["还明白"]["count"])
+            self.assertEqual(
+                1,
+                report["phrases"]["还明白"]["local_positions"]["before_transition"],
+            )
+            self.assertEqual(
+                1,
+                report["phrases"]["对不对"]["local_positions"]["standalone"],
+            )
+            self.assertEqual(
+                "较强的理解检查，用于挑战、纠偏或强调后果",
+                report["phrases"]["懂不懂"]["function"],
+            )
+
+    def test_measured_classroom_v1_matches_tracked_baseline(self):
+        report = distill_classroom.build_report(ROOT)
+        self.assertEqual(26, report["documents"])
+        self.assertEqual(267137, report["characters"])
+        self.assertEqual(839, report["phrases"]["还明白"]["count"])
+        self.assertEqual(465, report["phrases"]["还明白啊"]["count"])
+        self.assertEqual(531, report["phrases"]["对不对"]["count"])
+        self.assertEqual(265, report["phrases"]["知道吧"]["count"])
+        self.assertEqual(28, report["phrases"]["懂不懂"]["count"])
+
     def test_reviewed_srt_timestamp_rounding(self):
         self.assertEqual("00:01:02,346", export_reviewed.timestamp(62.3456))
+
+    def test_reviewed_export_preserves_noise_omission_audit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            review_path = root / "review.json"
+            review_path.write_text(
+                json.dumps(
+                    {
+                        "video_id": "1",
+                        "review_status": "reviewed",
+                        "reviewer": "owner",
+                        "reviewed_on": "2026-07-17",
+                        "segments": [
+                            {
+                                "id": 0,
+                                "start": 0,
+                                "end": 1,
+                                "raw_text": "还明白啊",
+                                "corrected_text": "还明白啊",
+                                "segment_status": "verified",
+                                "correction_kind": "none",
+                                "notes": "",
+                            },
+                            {
+                                "id": 1,
+                                "start": 1,
+                                "end": 2,
+                                "raw_text": "字幕循环",
+                                "corrected_text": "",
+                                "segment_status": "corrected",
+                                "correction_kind": "noise_asr_loop",
+                                "notes": "复听确认无人声",
+                            },
+                        ],
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+            _, json_path, count = export_reviewed.export_review(review_path, root / "out")
+            exported = json.loads(json_path.read_text(encoding="utf-8"))
+            self.assertEqual(1, count)
+            self.assertEqual("还明白啊", exported["segments"][0]["text"])
+            self.assertEqual(
+                "noise_asr_loop",
+                exported["omitted_segments"][0]["correction_kind"],
+            )
 
 
 if __name__ == "__main__":

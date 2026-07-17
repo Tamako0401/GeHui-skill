@@ -29,12 +29,25 @@ def export_review(review_path: Path, output_dir: Path) -> tuple[Path, Path, int]
         raise ValueError(f"{review_path.name}: " + ", ".join(errors[:10]))
 
     segments = []
+    omitted_segments = []
     blocks = []
     for source in review.get("segments", []):
         text = str(source.get("corrected_text") or "").strip()
         start = float(source.get("start") or 0)
         end = float(source.get("end") or start)
-        if not text or end <= start:
+        if not text:
+            omitted_segments.append(
+                {
+                    "id": source.get("id"),
+                    "start": start,
+                    "end": end,
+                    "raw_text": str(source.get("raw_text") or ""),
+                    "correction_kind": source.get("correction_kind", "none"),
+                    "notes": source.get("notes", ""),
+                }
+            )
+            continue
+        if end <= start:
             continue
         item = {
             "id": source.get("id"),
@@ -42,6 +55,7 @@ def export_review(review_path: Path, output_dir: Path) -> tuple[Path, Path, int]
             "end": end,
             "text": text,
             "review_decision": source.get("segment_status"),
+            "correction_kind": source.get("correction_kind", "none"),
             "notes": source.get("notes", ""),
         }
         segments.append(item)
@@ -65,6 +79,7 @@ def export_review(review_path: Path, output_dir: Path) -> tuple[Path, Path, int]
                 "source_review_file": str(review_path),
                 "exported_on": datetime.now(timezone.utc).isoformat(),
                 "segments": segments,
+                "omitted_segments": omitted_segments,
             },
             ensure_ascii=False,
             indent=2,
